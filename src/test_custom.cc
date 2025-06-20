@@ -20,6 +20,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <future>
+#include <array>
 #include <sys/wait.h>  // waitpid
 #include <unistd.h>    // fork
 #include <map>
