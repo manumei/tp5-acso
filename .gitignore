@@ -1,0 +1,48 @@
+# Compiled binaries
+threadpool
+tpcustomtest
+tptest
+debug_test
+debug_serial
+test_b03
+clean_threadpool_test
+cv_stress_test
+bad_cv_pattern_test
+race_condition_stress_test
+deadlock_test
+
+# Test and debug files we created
+src/debug_test.cc
+src/debug_serial.cc
+src/test_b03.cc
+src/clean_threadpool_test.cc
+src/cv_stress_test.cc
+src/bad_cv_pattern_test.cc
+src/race_condition_stress_test.cc
+src/deadlock_test.cc
+
+# Log files from testing
+src/valgrind_helgrind.log
+src/clean_test_helgrind.log
+src/cv_stress_helgrind.log
+src/bad_cv_helgrind.log
+*.log
+
+# Object files
+*.o
+*.obj
+
+# Temporary files
+*~
+*.swp
+*.swo
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+*.code-workspace
+
+# Build directories
+build/
+dist/
