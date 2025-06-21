@@ -10,6 +10,7 @@ cv_stress_test
 bad_cv_pattern_test
 race_condition_stress_test
 deadlock_test
+race_stress_test
 
 # Test and debug files we created
 src/debug_test.cc
