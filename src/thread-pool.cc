@@ -1,9 +1,3 @@
-/**
- * File: thread-pool.cc
- * --------------------
- * Presents the implementation of the ThreadPool class.
- */
-
 #include "thread-pool.h"
 #include <iostream>
 #include <chrono>
@@ -16,24 +10,21 @@ ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads),
                                             activeTasks(0),
                                             done(false)
 {
-
-    // Initialize worker threads
+    // Inicializar todos los workers
     for (size_t i = 0; i < numThreads; i++)
     {
         wts[i].available = true;
         wts[i].assigned = false;
-        wts[i].id = i;
-        // Start worker thread
+        wts[i].id = i; // hilo worker
         wts[i].ts = thread(&ThreadPool::worker, this, i);
     }
 
-    // Start dispatcher thread
+    // Arrancar el hilo dispatcher
     dt = thread(&ThreadPool::dispatcher, this);
 }
 
 void ThreadPool::schedule(const function<void(void)> &thunk)
 {
-    // Handle nullptr or invalid function
     if (!thunk)
     {
         throw invalid_argument("Cannot schedule null function");
@@ -47,18 +38,18 @@ void ThreadPool::schedule(const function<void(void)> &thunk)
         }
         taskQueue.push(thunk);
     }
-    // Signal dispatcher that a new task is available
+    // Despertar al dispatcher
     newTaskSemaphore.signal();
 }
 
 void ThreadPool::wait()
 {
     unique_lock<mutex> ul(queueLock);
-    // Wait until both queue is empty AND no tasks are actively executing
+    // Esperar hasta que se vacie la cola Y no haya tasks ejecutandose
     allTasksComplete.wait(ul, [this]()
                           { return taskQueue.empty() && activeTasks == 0; });
 
-    // Double-check to handle any potential race conditions
+    // Doble check por las dudas de race conditions
     while (!taskQueue.empty() || activeTasks > 0)
     {
         allTasksComplete.wait(ul, [this]()
@@ -70,28 +61,28 @@ void ThreadPool::dispatcher()
 {
     while (!done)
     {
-        // Wait for new tasks to be scheduled
+        // Esperar a que lleguen tasks nuevas
         newTaskSemaphore.wait();
 
         if (done)
             break;
 
-        // Process all available tasks
+        // Procesar todas las tasks disponibles
         while (true)
         {
             function<void(void)> task;
 
-            // Get task from queue and increment active counter atomically
+            // Sacar task de la cola e incrementar contador atomicamente
             {
                 lock_guard<mutex> lg(queueLock);
                 if (taskQueue.empty())
                     break;
                 task = taskQueue.front();
                 taskQueue.pop();
-                activeTasks++; // Increment here when we take the task
+                activeTasks++;
             }
 
-            // Find an available worker and wait for one if necessary
+            // Buscar un worker libre y esperar si es necesario
             int workerIndex = -1;
             {
                 unique_lock<mutex> ul(workerLock);
@@ -100,30 +91,29 @@ void ThreadPool::dispatcher()
                                                              [](const worker_t &w)
                                                              { return w.available; }); });
 
-                if (done)
+                if (done) // si lo estan cerrando, devuelve la task
                 {
-                    // If we're shutting down, put the task back and decrement counter
                     lock_guard<mutex> lg(queueLock);
                     taskQueue.push(task);
                     activeTasks--;
                     break;
                 }
 
-                // Assign task to available worker
+                // Asignar task al primer worker disponible
                 for (size_t i = 0; i < wts.size(); i++)
                 {
                     if (wts[i].available)
                     {
                         wts[i].available = false;
                         wts[i].assigned = true;
-                        wts[i].thunk = task;
+                        wts[i].thunk = task; // asigno task
                         workerIndex = i;
                         break;
                     }
                 }
             }
 
-            // Signal the worker to execute the task
+            // Despertar al worker para la task
             if (workerIndex != -1)
             {
                 wts[workerIndex].taskReady.signal();
@@ -136,34 +126,33 @@ void ThreadPool::worker(int id)
 {
     while (!done)
     {
-        // Wait for task assignment
+        // Esperar a task
         wts[id].taskReady.wait();
 
         if (done)
             break;
 
-        // Execute the assigned task
+        // Ejecutar la task asignada
         if (wts[id].assigned)
         {
-            // Execute the task first
             wts[id].thunk();
 
-            // Then mark as available and notify dispatcher atomically
+            // Despues nos marcamos como disponibles y avisamos
             {
                 lock_guard<mutex> workerGuard(workerLock);
-                wts[id].available = true;
-                wts[id].assigned = false;
-                // Notify dispatcher that a worker is available - must hold workerLock
+                wts[id].available = true; // ya estamos libres
+                wts[id].assigned = false; // sin task asignada
+                // Avisar al dispatcher que hay worker libre
                 workerAvailable.notify_one();
             }
 
-            // Decrease active task count and notify - must be AFTER task execution
+            // Decrementar contador de tasks activas - DESPUeS de ejecutar
             {
                 lock_guard<mutex> queueGuard(queueLock);
                 activeTasks--;
-                if (activeTasks == 0 && taskQueue.empty())
+                if (activeTasks == 0 && taskQueue.empty()) // si terminamos todo
                 {
-                    allTasksComplete.notify_all();
+                    allTasksComplete.notify_all(); // despertar al wait()
                 }
             }
         }
@@ -172,34 +161,33 @@ void ThreadPool::worker(int id)
 
 ThreadPool::~ThreadPool()
 {
-    // Wait for all scheduled tasks to complete
+    // Esperar que terminen todas las tasks programadas
     wait();
 
-    // Signal shutdown
     done = true;
 
-    // Wake up dispatcher
+    // Despertar al dispatcher
     newTaskSemaphore.signal();
 
-    // Wake up workers waiting for availability notification - must hold workerLock
+    // Despertar workers que esperan disponibilidad
     {
         lock_guard<mutex> lg(workerLock);
         workerAvailable.notify_all();
     }
 
-    // Wake up all workers
+    // Despertar a todos los workers
     for (size_t i = 0; i < wts.size(); i++)
     {
         wts[i].taskReady.signal();
     }
 
-    // Join all threads
-    if (dt.joinable())
+    // Hacer join de todos los hilos
+    if (dt.joinable()) // el dispatcher
     {
         dt.join();
     }
 
-    for (size_t i = 0; i < wts.size(); i++)
+    for (size_t i = 0; i < wts.size(); i++) // todos los workers
     {
         if (wts[i].ts.joinable())
         {

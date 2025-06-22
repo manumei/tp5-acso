@@ -6,29 +6,20 @@
 
 using namespace std;
 
-/**
- * @class Semaphore
- * @brief A class that represents a semaphore.
- *
- * A semaphore is a synchronization primitive that controls access to a shared resource.
- * It allows multiple threads to access the resource concurrently, but with a limited capacity.
- */
-class Semaphore 
+class Semaphore
 {
-    public:
+public:
+    Semaphore(int count = 0);
+    void signal(); // liberar
+    void wait();   // esperar
 
-        Semaphore(int count = 0); 
-        void signal ();
-        void wait(); 
+private:
+    int count_;
+    mutex mutex_;
+    condition_variable_any condition_;
 
-    private:
-
-        int count_;
-        mutex mutex_;
-        condition_variable_any condition_;
-        
-        Semaphore(const Semaphore& orig) = delete;              // no copy constructor
-        Semaphore& operator=(const Semaphore& orig) = delete;   // no copy assignment
+    Semaphore(const Semaphore &orig) = delete;
+    Semaphore &operator=(const Semaphore &orig) = delete;
 };
 
 #endif

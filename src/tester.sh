@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Configuración
+# Configuracion
 TARGET="custom"
 MEMCHECK_LOG="valgrind_memcheck.log"
 HELGRIND_LOG="valgrind_helgrind.log"
@@ -26,7 +26,7 @@ echo -e "${YELLOW}🧹 Limpieza inicial...${RESET}"
 make clean > /dev/null 2>&1
 rm -f "$MEMCHECK_LOG" "$HELGRIND_LOG"
 
-# Paso 2: compilación
+# Paso 2: compilacion
 echo -e "\n${YELLOW}🔧 Compilando ($TARGET)...${RESET}"
 make "$TARGET" || abort ""
 
